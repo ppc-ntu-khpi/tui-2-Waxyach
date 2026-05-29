@@ -1,8 +1,6 @@
-import com.mybank.domain.Bank;
-import com.mybank.domain.CheckingAccount;
-import com.mybank.domain.Customer;
-import com.mybank.domain.Account;
+import com.mybank.domain.*;
 
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -19,15 +17,15 @@ public class CLIDemo {
     public static final String ANSI_GREEN = "\u001B[32m";
     public static final String ANSI_YELLOW = "\u001B[33m";
 
-    private final String[] commandsList = new String[] {"help", "customers", "customer", "exit"};
+    private final String[] commandsList = new String[] {"help", "customers", "customer", "report", "exit"};
 
     public static void main(String[] args) {
-        Bank.addCustomer("John", "Doe");
-        Bank.addCustomer("Fox", "Mulder");
-
-        if (Bank.getNumberOfCustomers() >= 2) {
-            Bank.getCustomer(0).addAccount(new CheckingAccount(2000.00));
-            Bank.getCustomer(1).addAccount(new CheckingAccount(1000.00));
+        try {
+            DataSource dataSource = new DataSource("data/test.dat");
+            dataSource.loadData();
+        } catch (IOException e) {
+            System.err.println(ANSI_RED + "An error occurred while loading test.dat: " + e.getMessage() + ANSI_RESET);
+            return;
         }
 
         CLIDemo demo = new CLIDemo();
@@ -54,10 +52,11 @@ public class CLIDemo {
 
             String command = tokens[0];
             switch (command) {
-                case "help"      -> printHelp();
+                case "help" -> printHelp();
                 case "customers" -> handleCustomersCommand();
-                case "customer"  -> handleCustomerDetailsCommand(tokens);
-                case "exit"      -> {
+                case "customer" -> handleCustomerDetailsCommand(tokens);
+                case "report" -> handleReportCommand();
+                case "exit" -> {
                     System.out.println("Exiting application...");
                     AnsiConsole.systemUninstall();
                     return;
@@ -127,6 +126,37 @@ public class CLIDemo {
         } catch (Exception e) {
             System.out.println(ANSI_RED + "ERROR! Wrong customer number!" + ANSI_RESET);
         }
+    }
+
+    private void handleReportCommand() {
+        System.out.println("\n=======================================================");
+        System.out.println(ANSI_GREEN + "CUSTOMERS REPORT" + ANSI_RESET);
+        System.out.println("=======================================================");
+
+        if (Bank.getNumberOfCustomers() == 0) {
+            System.out.println(ANSI_RED + "Your bank has no customers to report!" + ANSI_RESET);
+            System.out.println("=======================================================");
+            return;
+        }
+
+        for (int i = 0; i < Bank.getNumberOfCustomers(); i++) {
+            Customer customer = Bank.getCustomer(i);
+            System.out.println("\nCustomer: " + customer.getLastName() + ", " + customer.getFirstName());
+
+            for (int j = 0; j < customer.getNumberOfAccounts(); j++) {
+                Account account = customer.getAccount(j);
+                String accountType = "Unknown Account";
+
+                if (account instanceof CheckingAccount) {
+                    accountType = "Checking Account";
+                } else if (account instanceof SavingsAccount) {
+                    accountType = "Savings Account";
+                }
+
+                System.out.printf(Locale.US, "    %s: current balance is $%.2f\n", accountType, account.getBalance());
+            }
+        }
+        System.out.println("=======================================================");
     }
 
     private void printWelcomeMessage() {
